@@ -1,0 +1,137 @@
+{
+  "name": "Plataforma Espacial - GS 2026",
+  "nodes": [
+    {
+      "parameters": {
+        "topics": [
+          {
+            "topic": "fiap/iot/lancamento/PLT-01/telemetria"
+          },
+          {
+            "topic": "fiap/iot/lancamento/PLT-01/alerta"
+          }
+        ],
+        "options": {}
+      },
+      "id": "mqtt-trigger",
+      "name": "MQTT Trigger",
+      "type": "n8n-nodes-base.mqttTrigger",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "credentials": {
+        "mqtt": {
+          "id": "mqtt-hivemq",
+          "name": "HiveMQ Cloud"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.first().json;\nconst d = (typeof raw.message === 'string') ? JSON.parse(raw.message) : raw;\nconst m = d.medicoes || {};\n\nconst estados = ['LIVRE', 'ATENCAO', 'PERIGO', 'CRITICO'];\nconst estadoIdx = estados.indexOf(d.estado || 'LIVRE');\n\nreturn [{\n  json: {\n    tag:          d.tag    || 'PLT-01',\n    nome:         d.nome   || 'Plataforma',\n    local:        d.local  || 'FIAP-SP',\n    estado:       d.estado || 'LIVRE',\n    motivo:       d.motivo || 'NORMAL',\n    estadoIdx:    estadoIdx,\n    isAlerta:     estadoIdx >= 2,\n    temperatura:  parseFloat(m.temperatura)  || 0,\n    umidade:      parseFloat(m.umidade)      || 0,\n    gas_pct:      parseFloat(m.gas_pct)      || 0,\n    distancia_cm: parseFloat(m.distancia_cm) || 999,\n    gas_alarme:   m.gas_alarme  ? 1 : 0,\n    intruso:      m.intruso     ? 1 : 0,\n    timestamp:    Date.now()\n  }\n}];"
+      },
+      "id": "processar-dados",
+      "name": "Processar Dados",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://vheuveqfsiraokwukvid.supabase.co/rest/v1/telemetria",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey",        "value": "SUA_SUPABASE_SERVICE_ROLE_KEY" },
+            { "name": "Authorization", "value": "Bearer SUA_SUPABASE_SERVICE_ROLE_KEY" },
+            { "name": "Content-Type",  "value": "application/json" },
+            { "name": "Prefer",        "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ tag: $json.tag, estado: $json.estado, motivo: $json.motivo, temperatura: $json.temperatura, umidade: $json.umidade, gas_pct: $json.gas_pct, distancia_cm: $json.distancia_cm, gas_alarme: $json.gas_alarme === 1, intruso: $json.intruso === 1 }) }}",
+        "options": {}
+      },
+      "id": "influxdb-write",
+      "name": "Salvar Supabase",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [720, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "check-alerta",
+              "leftValue": "={{ $('Processar Dados').item.json.isAlerta }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-perigo",
+      "name": "É Alerta?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [960, 300]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "chatId": "5743576672",
+        "text": "={{ \n  ($('Processar Dados').item.json.estado === 'CRITICO' ? '🚨' : '⚠️') + ' *ALERTA — PLATAFORMA ESPACIAL*\\n' +\n  '📍 ' + $('Processar Dados').item.json.local + '\\n' +\n  '🔴 Estado: *' + $('Processar Dados').item.json.estado + '*\\n' +\n  '⚡ Motivo: *' + $('Processar Dados').item.json.motivo + '*\\n\\n' +\n  '🌡️ Temp: ' + $('Processar Dados').item.json.temperatura + ' °C\\n' +\n  '💨 Gás: ' + $('Processar Dados').item.json.gas_pct + '%\\n' +\n  '📏 Distância: ' + $('Processar Dados').item.json.distancia_cm + ' cm\\n' +\n  '⏰ ' + new Date().toLocaleString('pt-BR')\n}}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "telegram-alerta",
+      "name": "Telegram Alerta",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [1200, 200],
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-bot",
+          "name": "PlataformaEspacialBot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $input.first().json;\nconsole.log(`[PLT] ${d.tag} | ${d.estado} | ${d.motivo} | T:${d.temperatura}°C G:${d.gas_pct}% D:${d.distancia_cm}cm`);\nreturn $input.all();"
+      },
+      "id": "log-debug",
+      "name": "Log Debug",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1200, 420]
+    }
+  ],
+  "connections": {
+    "MQTT Trigger": {
+      "main": [[{ "node": "Processar Dados", "type": "main", "index": 0 }]]
+    },
+    "Processar Dados": {
+      "main": [[{ "node": "Salvar InfluxDB", "type": "main", "index": 0 }]]
+    },
+    "Salvar Supabase": {
+      "main": [[{ "node": "É Alerta?", "type": "main", "index": 0 }]]
+    },
+    "É Alerta?": {
+      "main": [
+        [{ "node": "Telegram Alerta", "type": "main", "index": 0 }],
+        [{ "node": "Log Debug",       "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "tags": [{ "name": "GS-2026" }]
+}

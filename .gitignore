@@ -1,0 +1,8 @@
+secrets.h
+*.mp4
+*.avi
+*.mov
+__pycache__/
+*.pyc
+.env
+.DS_Store

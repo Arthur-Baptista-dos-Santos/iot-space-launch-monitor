@@ -1,0 +1,159 @@
+{
+  "title": "Plataforma de Lançamento Espacial - FIAP GS 2026",
+  "uid": "plataforma-espacial-gs",
+  "timezone": "browser",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "5s",
+  "panels": [
+    {
+      "id": 1,
+      "title": "🌡️ Temperatura ao Longo do Tempo",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "datasource": { "type": "grafana-postgresql-datasource" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "fixed", "fixedColor": "orange" },
+          "custom": { "lineWidth": 2, "fillOpacity": 20 },
+          "unit": "celsius",
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 40 },
+              { "color": "red", "value": 60 }
+            ]
+          }
+        }
+      },
+      "options": { "tooltip": { "mode": "single" } },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-postgresql-datasource" },
+          "rawSql": "SELECT criado_em AS time, temperatura AS \"Temperatura (°C)\" FROM telemetria WHERE criado_em IS NOT NULL ORDER BY criado_em ASC",
+          "format": "time_series",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "💨 Gás (%) ao Longo do Tempo",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "datasource": { "type": "grafana-postgresql-datasource" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "fixed", "fixedColor": "yellow" },
+          "custom": { "lineWidth": 2, "fillOpacity": 20 },
+          "unit": "percent",
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 45 },
+              { "color": "red", "value": 70 }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-postgresql-datasource" },
+          "rawSql": "SELECT criado_em AS time, gas_pct AS \"Gás (%)\" FROM telemetria WHERE criado_em IS NOT NULL ORDER BY criado_em ASC",
+          "format": "time_series",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "📏 Distância (cm) ao Longo do Tempo",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "datasource": { "type": "grafana-postgresql-datasource" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "fixed", "fixedColor": "blue" },
+          "custom": { "lineWidth": 2, "fillOpacity": 10 },
+          "unit": "cm"
+        }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-postgresql-datasource" },
+          "rawSql": "SELECT criado_em AS time, distancia_cm AS \"Distância (cm)\" FROM telemetria WHERE criado_em IS NOT NULL ORDER BY criado_em ASC",
+          "format": "time_series",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "🚦 Distribuição de Estados",
+      "type": "piechart",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "datasource": { "type": "grafana-postgresql-datasource" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" }
+        }
+      },
+      "options": {
+        "pieType": "donut",
+        "legend": { "displayMode": "table", "placement": "right" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-postgresql-datasource" },
+          "rawSql": "SELECT estado AS metric, COUNT(*) AS value FROM telemetria GROUP BY estado ORDER BY value DESC",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "📊 Média de Temperatura por Estado",
+      "type": "bargauge",
+      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 16 },
+      "datasource": { "type": "grafana-postgresql-datasource" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius",
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 40 },
+              { "color": "red", "value": 60 }
+            ]
+          }
+        }
+      },
+      "options": { "orientation": "horizontal", "reduceOptions": { "calcs": ["mean"] } },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-postgresql-datasource" },
+          "rawSql": "SELECT estado AS metric, ROUND(AVG(temperatura)::numeric, 1) AS value FROM telemetria GROUP BY estado ORDER BY value DESC",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "📋 Últimos Registros",
+      "type": "table",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 22 },
+      "datasource": { "type": "grafana-postgresql-datasource" },
+      "options": { "sortBy": [{ "displayName": "criado_em", "desc": true }] },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-postgresql-datasource" },
+          "rawSql": "SELECT criado_em, tag, estado, motivo, temperatura, umidade, gas_pct, distancia_cm, gas_alarme, intruso FROM telemetria ORDER BY criado_em DESC LIMIT 50",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    }
+  ]
+}

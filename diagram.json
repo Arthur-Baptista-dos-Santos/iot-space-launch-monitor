@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "editor": "wokwi",
+  "parts": [
+    { "type": "wokwi-esp32-devkit-v1", "id": "esp", "top": 200, "left": 140, "attrs": {} },
+
+    { "type": "wokwi-dht22",      "id": "dht",  "top": 20,  "left": -100, "attrs": { "temperature": "28", "humidity": "55" } },
+    { "type": "wokwi-gas-sensor", "id": "mq2",  "top": 20,  "left": 60,   "attrs": { "concentration": "0" } },
+    { "type": "wokwi-hc-sr04",    "id": "hcsr", "top": 20,  "left": 280,  "attrs": { "distance": "300" } },
+
+    { "type": "wokwi-resistor", "id": "r1", "top": 160, "left": 500, "rotate": 90, "attrs": { "value": "220" } },
+    { "type": "wokwi-led",      "id": "l1", "top": 130, "left": 570, "attrs": { "color": "green",  "label": "LIVRE"   } },
+
+    { "type": "wokwi-resistor", "id": "r2", "top": 210, "left": 500, "rotate": 90, "attrs": { "value": "220" } },
+    { "type": "wokwi-led",      "id": "l2", "top": 180, "left": 570, "attrs": { "color": "yellow", "label": "ATENCAO" } },
+
+    { "type": "wokwi-resistor", "id": "r3", "top": 260, "left": 500, "rotate": 90, "attrs": { "value": "220" } },
+    { "type": "wokwi-led",      "id": "l3", "top": 230, "left": 570, "attrs": { "color": "red",    "label": "PERIGO"  } },
+
+    { "type": "wokwi-resistor", "id": "r4", "top": 310, "left": 500, "rotate": 90, "attrs": { "value": "220" } },
+    { "type": "wokwi-led",      "id": "l4", "top": 280, "left": 570, "attrs": { "color": "blue",   "label": "CRITICO" } },
+
+    { "type": "wokwi-buzzer", "id": "bz", "top": 380, "left": 200, "attrs": {} }
+  ],
+  "connections": [
+    ["dht:VCC", "esp:3V3",   "red",    []],
+    ["dht:GND", "esp:GND.1", "black",  []],
+    ["dht:SDA", "esp:D15",   "orange", []],
+
+    ["mq2:VCC",  "esp:3V3",   "red",    []],
+    ["mq2:GND",  "esp:GND.1", "black",  []],
+    ["mq2:AOUT", "esp:D34",   "yellow", []],
+    ["mq2:DOUT", "esp:D35",   "white",  []],
+
+    ["hcsr:VCC",  "esp:3V3",   "red",   []],
+    ["hcsr:GND",  "esp:GND.1", "black", []],
+    ["hcsr:TRIG", "esp:D5",    "green", []],
+    ["hcsr:ECHO", "esp:D19",   "blue",  []],
+
+    ["esp:D2",  "r1:2", "green",  []],
+    ["r1:1",    "l1:A", "green",  []],
+    ["l1:K",    "esp:GND.1", "black", []],
+
+    ["esp:D4",  "r2:2", "yellow", []],
+    ["r2:1",    "l2:A", "yellow", []],
+    ["l2:K",    "esp:GND.1", "black", []],
+
+    ["esp:D13", "r3:2", "red",    []],
+    ["r3:1",    "l3:A", "red",    []],
+    ["l3:K",    "esp:GND.1", "black", []],
+
+    ["esp:D26", "r4:2", "blue",   []],
+    ["r4:1",    "l4:A", "blue",   []],
+    ["l4:K",    "esp:GND.1", "black", []],
+
+    ["esp:D14", "bz:1", "purple", []],
+    ["bz:2",    "esp:GND.1", "black", []]
+  ],
+  "serialMonitor": { "display": "always" },
+  "dependencies": {}
+}

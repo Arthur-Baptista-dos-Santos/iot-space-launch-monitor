@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Plataforma de Lançamento Espacial — FIAP GS 2026</title>
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',sans-serif;background:#07101f;color:#dde6f0;min-height:100vh}
+
+    header{
+      background:linear-gradient(90deg,#0a1628,#0f2240);
+      padding:16px 28px;border-bottom:2px solid #152a4a;
+      display:flex;align-items:center;gap:14px
+    }
+    header h1{font-size:1.25rem;font-weight:700;letter-spacing:1px}
+    header p{font-size:0.75rem;color:#5a8ab0;margin-top:2px}
+    .conn{width:10px;height:10px;border-radius:50%;background:#333;margin-left:auto;transition:all .4s}
+    .conn.on{background:#00dd66;box-shadow:0 0 8px #00dd66}
+
+    .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:16px;padding:20px}
+
+    .card{
+      background:#0d1b2e;border:1px solid #162d4a;border-radius:12px;padding:18px;
+    }
+    .card h3{font-size:.7rem;text-transform:uppercase;letter-spacing:1.5px;color:#4a7a9b;margin-bottom:12px}
+
+    /* spans */
+    .c2{grid-column:span 2}.c3{grid-column:span 3}.c4{grid-column:span 4}
+    .c6{grid-column:span 6}.c12{grid-column:span 12}
+
+    /* Estado principal */
+    .estado-box{
+      display:flex;flex-direction:column;gap:10px
+    }
+    .estado-badge{
+      display:inline-flex;align-items:center;gap:10px;
+      padding:10px 18px;border-radius:10px;font-size:1.3rem;
+      font-weight:800;letter-spacing:2px;transition:all .4s;
+      background:#111;border:2px solid #222
+    }
+    .estado-LIVRE   {background:#001f0d;color:#00ff66;border-color:#00cc44}
+    .estado-ATENCAO {background:#2a1f00;color:#ffcc00;border-color:#ffaa00}
+    .estado-PERIGO  {background:#2a0800;color:#ff5500;border-color:#cc3300}
+    .estado-CRITICO {background:#1a0000;color:#ff2200;border-color:#990000;animation:pulseRed .5s infinite alternate}
+    @keyframes pulseRed{from{box-shadow:none}to{box-shadow:0 0 24px #ff2200}}
+
+    /* Motivo */
+    .motivo-box{
+      padding:10px 14px;border-radius:8px;font-size:.85rem;
+      font-weight:600;letter-spacing:.5px;min-height:38px;
+      display:flex;align-items:center;gap:8px;
+      background:#0a1628;border-left:4px solid #1e3a5f;
+      color:#7ab0d0;transition:all .4s
+    }
+    .motivo-NORMAL        {border-color:#00cc44;color:#00ff88}
+    .motivo-APROXIMANDO   {border-color:#ffaa00;color:#ffcc44}
+    .motivo-TEMPERATURA   {border-color:#ff6600;color:#ff9944}
+    .motivo-INTRUSO       {border-color:#ff4400;color:#ff6644}
+    .motivo-GAS           {border-color:#cc0000;color:#ff4444}
+    .motivo-CRITICO       {border-color:#990000;color:#ff2222;animation:pulseRed .5s infinite alternate}
+
+    /* Valor grande */
+    .big{font-size:2.6rem;font-weight:700;line-height:1}
+    .unit{font-size:.9rem;color:#5a8ab0;margin-left:3px}
+    .sub{font-size:.7rem;color:#3a5a7a;margin-top:6px}
+
+    /* Barra */
+    .bar-wrap{width:100%;height:8px;background:#0f2030;border-radius:4px;margin-top:10px;overflow:hidden}
+    .bar-fill{height:100%;border-radius:4px;transition:width .6s,background .4s}
+
+    /* Indicadores booleanos */
+    .bool-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+    .bool-pill{
+      padding:4px 12px;border-radius:12px;font-size:.72rem;font-weight:600;
+      background:#0a1628;border:1px solid #1e3a5f;color:#4a7a9b;transition:all .3s
+    }
+    .bool-pill.active-red  {background:#2a0800;border-color:#cc3300;color:#ff6644}
+    .bool-pill.active-green{background:#001f0d;border-color:#00cc44;color:#00ff88}
+
+    /* Log */
+    .log-list{list-style:none;max-height:260px;overflow-y:auto}
+    .log-list li{
+      padding:7px 10px;border-left:3px solid #1e3a5f;
+      margin-bottom:6px;border-radius:4px;font-size:.78rem;
+      background:#0a1628;color:#5a8ab0
+    }
+    .log-list li.alerta  {border-color:#ff4400;color:#ffaa88;background:#1a0800}
+    .log-list li.critico {border-color:#cc0000;color:#ff7766;background:#130000}
+    .log-list::-webkit-scrollbar{width:4px}
+    .log-list::-webkit-scrollbar-thumb{background:#1e3a5f;border-radius:2px}
+
+    canvas{max-height:160px}
+  </style>
+</head>
+<body>
+
+<header>
+  <div style="font-size:1.8rem">🚀</div>
+  <div>
+    <h1>PLATAFORMA DE LANÇAMENTO ESPACIAL</h1>
+    <p id="headerSub">FIAP · GS 2026.1 · TAG: PLT-01 · Base FIAP - SP · Aguardando conexão...</p>
+  </div>
+  <div class="conn" id="connDot"></div>
+</header>
+
+<div class="grid">
+
+  <!-- Estado + Motivo -->
+  <div class="card c4">
+    <h3>Estado da Plataforma</h3>
+    <div class="estado-box">
+      <span class="estado-badge" id="estadoBadge">⏳ AGUARDANDO</span>
+      <div class="motivo-box" id="motivoBox">— sem dados —</div>
+      <div class="bool-row">
+        <span class="bool-pill" id="pillGas">💨 Gás OK</span>
+        <span class="bool-pill" id="pillIntruso">👤 Área Livre</span>
+        <span class="bool-pill" id="pillTemp">🌡️ Temp OK</span>
+      </div>
+      <p class="sub" id="ultimaAtt">Última atualização: --</p>
+    </div>
+  </div>
+
+  <!-- Temperatura -->
+  <div class="card c2">
+    <h3>Temperatura</h3>
+    <span class="big" id="tempVal">--</span><span class="unit">°C</span>
+    <div class="bar-wrap"><div class="bar-fill" id="tempBar" style="width:0%;background:#00cc44"></div></div>
+    <p class="sub">Limiar: 40 °C</p>
+  </div>
+
+  <!-- Umidade -->
+  <div class="card c2">
+    <h3>Umidade</h3>
+    <span class="big" id="umidVal">--</span><span class="unit">%</span>
+    <div class="bar-wrap"><div class="bar-fill" id="umidBar" style="width:0%;background:#00aaff"></div></div>
+    <p class="sub">Monitoramento contínuo</p>
+  </div>
+
+  <!-- Gás -->
+  <div class="card c2">
+    <h3>Gás (MQ-2)</h3>
+    <span class="big" id="gasVal">--</span><span class="unit">%</span>
+    <div class="bar-wrap"><div class="bar-fill" id="gasBar" style="width:0%;background:#00cc44"></div></div>
+    <p class="sub">Limiar: 45%</p>
+  </div>
+
+  <!-- Distância -->
+  <div class="card c2">
+    <h3>Distância</h3>
+    <span class="big" id="distVal">--</span><span class="unit">cm</span>
+    <div class="bar-wrap"><div class="bar-fill" id="distBar" style="width:0%;background:#00cc44"></div></div>
+    <p class="sub">Intruso: &lt; 150 cm</p>
+  </div>
+
+  <!-- Gráfico Temperatura -->
+  <div class="card c4">
+    <h3>📈 Histórico — Temperatura (°C)</h3>
+    <canvas id="chartTemp"></canvas>
+  </div>
+
+  <!-- Gráfico Gás -->
+  <div class="card c4">
+    <h3>📈 Histórico — Gás (%)</h3>
+    <canvas id="chartGas"></canvas>
+  </div>
+
+  <!-- Gráfico Distância -->
+  <div class="card c4">
+    <h3>📡 Histórico — Proximidade (cm)</h3>
+    <canvas id="chartDist"></canvas>
+  </div>
+
+  <!-- Comando Remoto -->
+  <div class="card c12" style="margin-bottom:1rem">
+    <h3>🎮 Controle Remoto — ESP32</h3>
+    <div style="display:flex;gap:1rem;flex-wrap:wrap;margin-top:.8rem">
+      <button onclick="enviarComando('LED_AZUL_ON')"  style="padding:.6rem 1.2rem;background:#1e90ff;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:.9rem">💙 LED Azul ON</button>
+      <button onclick="enviarComando('LED_AZUL_OFF')" style="padding:.6rem 1.2rem;background:#555;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:.9rem">⬛ LED Azul OFF</button>
+      <button onclick="enviarComando('BUZZER_ON')"    style="padding:.6rem 1.2rem;background:#f39c12;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:.9rem">🔊 Buzzer</button>
+      <button onclick="enviarComando('RESET')"        style="padding:.6rem 1.2rem;background:#e74c3c;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:.9rem">🔄 Reset</button>
+    </div>
+    <p id="cmdStatus" style="margin-top:.6rem;font-size:.85rem;color:#aaa">Nenhum comando enviado.</p>
+  </div>
+
+  <!-- Log -->
+  <div class="card c12">
+    <h3>📋 Log de Eventos — atualizado a cada 10s | alertas em tempo real</h3>
+    <ul class="log-list" id="logList"><li>Aguardando dados...</li></ul>
+  </div>
+
+</div>
+
+<script>
+// ── Chart.js setup ─────────────────────────────────────────────────────────
+const MAX_POINTS = 20;
+
+function makeChart(id, label, color) {
+  const ctx = document.getElementById(id).getContext('2d');
+  return new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: [],
+      datasets: [{
+        label, data: [],
+        borderColor: color, backgroundColor: color + '22',
+        borderWidth: 2, pointRadius: 3, fill: true, tension: 0.3
+      }]
+    },
+    options: {
+      animation: false,
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#3a5a7a', maxTicksLimit: 6 }, grid: { color: '#0f2030' } },
+        y: { ticks: { color: '#3a5a7a' }, grid: { color: '#0f2030' } }
+      }
+    }
+  });
+}
+
+const chartTemp = makeChart('chartTemp', 'Temperatura', '#ff6644');
+const chartGas  = makeChart('chartGas',  'Gás %',       '#ffaa00');
+const chartDist = (() => {
+  const ctx = document.getElementById('chartDist').getContext('2d');
+  return new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: [],
+      datasets: [
+        {
+          label: 'Distância cm', data: [],
+          borderColor: '#00aaff', backgroundColor: '#00aaff22',
+          borderWidth: 2, pointRadius: 3, fill: true, tension: 0.3
+        },
+        {
+          label: 'Limiar intruso', data: [],
+          borderColor: '#ff4400', backgroundColor: 'transparent',
+          borderWidth: 1, borderDash: [6,4], pointRadius: 0, fill: false
+        }
+      ]
+    },
+    options: {
+      animation: false, responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color:'#3a5a7a', maxTicksLimit:6 }, grid:{ color:'#0f2030' } },
+        y: { ticks: { color:'#3a5a7a' }, grid:{ color:'#0f2030' }, min: 0 }
+      }
+    }
+  });
+})();
+
+function pushChart(chart, label, value) {
+  chart.data.labels.push(label);
+  chart.data.datasets[0].data.push(value);
+  if (chart.data.labels.length > MAX_POINTS) {
+    chart.data.labels.shift();
+    chart.data.datasets[0].data.shift();
+  }
+  chart.update();
+}
+
+// ── Estado atual (cache) ────────────────────────────────────────────────────
+let cache = { estado:'AGUARDANDO', motivo:'--', temp:null, umid:null, gas:null, dist:null, gasAl:false, intr:false };
+
+// ── MQTT ────────────────────────────────────────────────────────────────────
+const BROKER  = 'wss://c953dbdae4014640a08a724d356458e7.s1.eu.hivemq.cloud:8884/mqtt';
+const OPTIONS = {
+  clientId: 'dashboard-plt01-' + Math.random().toString(16).slice(2,8),
+  username: 'gelwlr', password: '237Deluxe@', clean: true, reconnectPeriod: 3000
+};
+
+const client = mqtt.connect(BROKER, OPTIONS);
+client.on('connect', () => {
+  document.getElementById('connDot').classList.add('on');
+  client.subscribe('fiap/iot/lancamento/PLT-01/telemetria');
+  client.subscribe('fiap/iot/lancamento/PLT-01/alerta');
+});
+client.on('offline', () => document.getElementById('connDot').classList.remove('on'));
+client.on('error',   () => document.getElementById('connDot').classList.remove('on'));
+
+// ── Comando Remoto ──────────────────────────────────────────────────────────
+function enviarComando(cmd) {
+  client.publish('fiap/iot/lancamento/PLT-01/comando', cmd);
+  const status = document.getElementById('cmdStatus');
+  const hora = new Date().toLocaleTimeString('pt-BR');
+  status.textContent = `✅ Comando enviado: ${cmd} às ${hora}`;
+  status.style.color = '#2ecc71';
+}
+
+client.on('message', (topic, message) => {
+  let d; try { d = JSON.parse(message.toString()); } catch { return; }
+  const m = d.medicoes || {};
+  const isAlerta = topic.includes('alerta');
+
+  cache.estado  = d.estado  || 'AGUARDANDO';
+  cache.motivo  = d.motivo  || 'NORMAL';
+  cache.temp    = m.temperatura  ?? null;
+  cache.umid    = m.umidade      ?? null;
+  cache.gas     = m.gas_pct      ?? null;
+  cache.dist    = m.distancia_cm ?? null;
+  cache.gasAl   = m.gas_alarme   || false;
+  cache.intr    = m.intruso      || false;
+
+  renderUI();
+  const t = new Date().toLocaleTimeString('pt-BR');
+  pushChart(chartTemp, t, cache.temp);
+  pushChart(chartGas,  t, cache.gas);
+  if (cache.dist != null && cache.dist < 999) {
+    const dVal = cache.dist;
+    chartDist.data.labels.push(t);
+    chartDist.data.datasets[0].data.push(dVal);
+    chartDist.data.datasets[1].data.push(150); // linha do limiar
+    if (chartDist.data.labels.length > MAX_POINTS) {
+      chartDist.data.labels.shift();
+      chartDist.data.datasets[0].data.shift();
+      chartDist.data.datasets[1].data.shift();
+    }
+    chartDist.update();
+  }
+  if (isAlerta) addLog(true);
+});
+
+// ── Render ──────────────────────────────────────────────────────────────────
+function renderUI() {
+  const { estado, motivo, temp, umid, gas, dist, gasAl, intr } = cache;
+
+  // Estado badge
+  const badge = document.getElementById('estadoBadge');
+  const icons = { LIVRE:'✅', ATENCAO:'⚠️', PERIGO:'🔴', CRITICO:'🚨', AGUARDANDO:'⏳' };
+  badge.textContent = (icons[estado] || '') + ' ' + estado;
+  badge.className   = 'estado-badge estado-' + estado;
+
+  // Motivo box
+  const mBox = document.getElementById('motivoBox');
+  mBox.textContent = motivoIcon(motivo) + ' ' + motivo;
+  const mk = motivoClass(motivo);
+  mBox.className = 'motivo-box motivo-' + mk;
+
+  // Pills booleanos
+  setPill('pillGas',    gasAl, '💨 VAZAMENTO DE GÁS', '💨 Gás Normal',    'active-red', 'active-green');
+  setPill('pillIntruso', intr, '👤 INTRUSO DETECTADO','👤 Área Livre',     'active-red', 'active-green');
+  setPill('pillTemp',   temp != null && temp >= 40, '🌡️ TEMP CRÍTICA','🌡️ Temp Normal','active-red','active-green');
+
+  // Valores
+  setVal('tempVal', temp, 1);
+  setVal('umidVal', umid, 1);
+  setVal('gasVal',  gas,  0);
+  document.getElementById('distVal').textContent = dist != null ? (dist >= 999 ? '>999' : dist) : '--';
+
+  // Barras
+  setBar('tempBar', temp, 60,  temp>=40?'#cc0000':temp>=30?'#ffaa00':'#00cc44');
+  setBar('umidBar', umid, 100, '#00aaff');
+  setBar('gasBar',  gas,  100, gas>=45?'#cc0000':gas>=30?'#ffaa00':'#00cc44');
+  const dPct = dist != null && dist < 999 ? Math.max(0, 100 - (dist/300)*100) : 0;
+  const dCor = dist != null && dist <= 150 ? '#cc0000' : dist < 300 ? '#ffaa00' : '#00cc44';
+  setBar('distBar', dPct, 100, dCor);
+
+  document.getElementById('ultimaAtt').textContent = 'Última atualização: ' + new Date().toLocaleTimeString('pt-BR');
+  document.getElementById('headerSub').textContent =
+    'FIAP · GS 2026.1 · TAG: PLT-01 · Base FIAP - SP · ' + new Date().toLocaleString('pt-BR');
+}
+
+function setVal(id, v, dec) {
+  document.getElementById(id).textContent = v != null ? v.toFixed(dec) : '--';
+}
+function setBar(id, v, max, cor) {
+  const el = document.getElementById(id);
+  el.style.width      = Math.min(100, Math.max(0, (v/max)*100)) + '%';
+  el.style.background = cor;
+}
+function setPill(id, active, labelOn, labelOff, classOn, classOff) {
+  const el = document.getElementById(id);
+  el.textContent = active ? labelOn : labelOff;
+  el.className   = 'bool-pill ' + (active ? classOn : classOff);
+}
+
+function motivoIcon(m) {
+  if (!m) return '—';
+  if (m.includes('GAS + TEMP'))    return '🚨';
+  if (m.includes('GAS'))           return '💨';
+  if (m.includes('INTRUSO'))       return '👤';
+  if (m.includes('TEMPERATURA'))   return '🌡️';
+  if (m.includes('APROXIMANDO'))   return '📡';
+  return '✅';
+}
+function motivoClass(m) {
+  if (!m || m === 'NORMAL') return 'NORMAL';
+  if (m.includes('GAS + TEMP'))    return 'CRITICO';
+  if (m.includes('GAS'))           return 'GAS';
+  if (m.includes('INTRUSO'))       return 'INTRUSO';
+  if (m.includes('TEMPERATURA'))   return 'TEMPERATURA';
+  if (m.includes('APROXIMANDO'))   return 'APROXIMANDO';
+  return 'NORMAL';
+}
+
+// ── Log ─────────────────────────────────────────────────────────────────────
+function addLog(isAlerta) {
+  const lista = document.getElementById('logList');
+  if (lista.children.length === 1 && lista.children[0].textContent === 'Aguardando dados...') {
+    lista.innerHTML = '';
+  }
+  const { estado, motivo, temp, umid, gas, dist } = cache;
+  const li = document.createElement('li');
+  li.className = isAlerta ? (estado === 'CRITICO' ? 'critico' : 'alerta') : '';
+  const icon = isAlerta ? motivoIcon(motivo) : '📋';
+  li.innerHTML = icon + ' <strong>' + estado + '</strong>';
+  if (motivo && motivo !== 'NORMAL') li.innerHTML += ' · <em>' + motivo + '</em>';
+  li.innerHTML += ' — ';
+  li.innerHTML += '🌡️ ' + (temp!=null?temp.toFixed(1):'--') + '°C &nbsp;';
+  li.innerHTML += '💧 ' + (umid!=null?umid.toFixed(1):'--') + '% &nbsp;';
+  li.innerHTML += '💨 ' + (gas!=null?gas:'--') + '% &nbsp;';
+  li.innerHTML += '📏 ' + (dist!=null&&dist<999?dist:'>999') + ' cm &nbsp;';
+  li.innerHTML += '<span style="color:#3a5a7a">' + new Date().toLocaleTimeString('pt-BR') + '</span>';
+  lista.insertBefore(li, lista.firstChild);
+  if (lista.children.length > 50) lista.removeChild(lista.lastChild);
+}
+
+// Log periódico a cada 10s
+setInterval(() => {
+  if (cache.estado !== 'AGUARDANDO') addLog(false);
+}, 10000);
+</script>
+</body>
+</html>
