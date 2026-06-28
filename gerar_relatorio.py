@@ -1,4 +1,4 @@
-from reportlab.lib.pagesizes import A4
+﻿from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import cm
 from reportlab.lib.colors import HexColor, white, black
@@ -34,9 +34,9 @@ CAPTION   = s("Normal",  fontSize=9,  textColor=CINZA_ESC, alignment=TA_CENTER, 
 
 def header_box(story):
     data = [[Paragraph("PLATAFORMA DE LANCAMENTO ESPACIAL", TITULO)],
-            [Paragraph("Global Solution 2026.1 — Physical Computing & Cognitive IoT", SUBTIT)],
-            [Paragraph("Arthur Batista — RM 565346     |     Joao Pedro — RM 561738     |     Nelson Felix — RM 565603", AUTORES)],
-            [Paragraph("Tecnologia em Inteligencia Artificial — 2TIAP | FIAP — Junho 2026", AUTORES)]]
+            [Paragraph("Global Solution 2026.1 | Physical Computing & Cognitive IoT", SUBTIT)],
+            [Paragraph("Arthur Batista | RM 565346     |     Joao Pedro | RM 561738     |     Nelson Felix | RM 565603", AUTORES)],
+            [Paragraph("Tecnologia em Inteligencia Artificial | 2TIAP | FIAP | Junho 2026", AUTORES)]]
     t = Table(data, colWidths=[17*cm])
     t.setStyle(TableStyle([
         ("BACKGROUND", (0,0), (-1,-1), AZUL),
@@ -152,9 +152,9 @@ story.append(Paragraph(
 
 arq_rows = [
     ["ESP32 (Wokwi)",    "Coleta dados dos sensores a cada 5 segundos e publica via MQTT"],
-    ["HiveMQ Cloud",     "Broker MQTT na nuvem — recebe e distribui as mensagens (porta 8883/TLS)"],
-    ["n8n",              "Orquestrador de fluxos — processa dados, salva no banco e dispara alertas"],
-    ["Supabase",         "Banco de dados PostgreSQL na nuvem — armazena todo o historico de telemetria"],
+    ["HiveMQ Cloud",     "Broker MQTT na nuvem | recebe e distribui as mensagens (porta 8883/TLS)"],
+    ["n8n",              "Orquestrador de fluxos | processa dados, salva no banco e dispara alertas"],
+    ["Supabase",         "Banco de dados PostgreSQL na nuvem | armazena todo o historico de telemetria"],
     ["Dashboard HTML",   "Visualizacao em tempo real via MQTT direto no browser"],
     ["Grafana Cloud",    "Visualizacao historica conectada ao Supabase via PostgreSQL"],
     ["Telegram Bot",     "Alertas externos em tempo real para PERIGO e CRITICO"],
@@ -170,7 +170,7 @@ story.append(Paragraph(
     s("Normal", fontSize=11, textColor=VERMELHO, fontName="Helvetica-Bold", alignment=TA_CENTER, spaceAfter=8)))
 
 # HARDWARE
-section_bar(story, "5. HARDWARE E SENSORES (ESP32 — Wokwi)")
+section_bar(story, "5. HARDWARE E SENSORES (ESP32 | Wokwi)")
 story.append(Paragraph("5.1 Sensores e Atuadores:", H2))
 
 hw_rows = [
@@ -238,10 +238,10 @@ story.append(t)
 story.append(Spacer(1, 0.3*cm))
 
 # TRANSMISSAO
-section_bar(story, "7. TRANSMISSAO DE DADOS — MQTT")
+section_bar(story, "7. TRANSMISSAO DE DADOS | MQTT")
 info_table(story, [
-    ["Broker",        "HiveMQ Cloud — c953dbdae4014640a08a724d356458e7.s1.eu.hivemq.cloud"],
-    ["Porta",         "8883 (TLS/SSL — conexao segura e criptografada)"],
+    ["Broker",        "HiveMQ Cloud | c953dbdae4014640a08a724d356458e7.s1.eu.hivemq.cloud"],
+    ["Porta",         "8883 (TLS/SSL | conexao segura e criptografada)"],
     ["Protocolo",     "MQTT v3.1.1"],
     ["Topico Dados",  "fiap/iot/lancamento/PLT-01/telemetria (estados LIVRE e ATENCAO)"],
     ["Topico Alerta", "fiap/iot/lancamento/PLT-01/alerta (estados PERIGO e CRITICO)"],
@@ -251,7 +251,7 @@ info_table(story, [
 ])
 
 # N8N
-section_bar(story, "8. ORQUESTRACAO DE FLUXOS — n8n")
+section_bar(story, "8. ORQUESTRACAO DE FLUXOS | n8n")
 story.append(Paragraph(
     "O n8n e responsavel por orquestrar todo o fluxo de dados entre o broker MQTT, "
     "o banco de dados e o sistema de alertas. O workflow possui os seguintes nos:", BODY))
@@ -259,7 +259,7 @@ story.append(Paragraph(
 n8n_rows = [
     ["MQTT Trigger",    "Escuta os topicos telemetria e alerta simultaneamente"],
     ["Processar Dados", "Codigo JavaScript que parseia o JSON e calcula o indice de alerta"],
-    ["Salvar Supabase", "HTTP POST para a API REST do Supabase — persiste os dados"],
+    ["Salvar Supabase", "HTTP POST para a API REST do Supabase | persiste os dados"],
     ["E Alerta?",       "Condicional: se isAlerta=true vai para Telegram, senao Log Debug"],
     ["Telegram Alerta", "Envia mensagem formatada ao bot com estado, motivo e medicoes"],
     ["Log Debug",       "Registra no console do n8n para depuracao"],
@@ -267,7 +267,7 @@ n8n_rows = [
 info_table(story, n8n_rows, [4*cm, 13*cm])
 
 # BANCO DE DADOS
-section_bar(story, "9. BANCO DE DADOS — Supabase (PostgreSQL)")
+section_bar(story, "9. BANCO DE DADOS | Supabase (PostgreSQL)")
 story.append(Paragraph(
     "O Supabase foi escolhido como solucao de banco de dados por oferecer PostgreSQL "
     "gerenciado na nuvem com API REST automatica, plano gratuito generoso (500MB) e "
@@ -331,17 +331,17 @@ story.append(Paragraph(
     "Paineis criados:", BODY))
 
 for item in [
-    "Grafico de linha — Temperatura ao longo do tempo (com threshold em 40 graus C)",
-    "Grafico de linha — Gas (%) ao longo do tempo (com threshold em 45%)",
-    "Grafico de linha — Distancia (cm) ao longo do tempo",
-    "Grafico de pizza/donut — Distribuicao de estados (LIVRE/ATENCAO/PERIGO/CRITICO)",
-    "Grafico de barras — Media de temperatura por estado",
-    "Tabela — Ultimos 50 registros com todos os campos",
+    "Grafico de linha | Temperatura ao longo do tempo (com threshold em 40 graus C)",
+    "Grafico de linha | Gas (%) ao longo do tempo (com threshold em 45%)",
+    "Grafico de linha | Distancia (cm) ao longo do tempo",
+    "Grafico de pizza/donut | Distribuicao de estados (LIVRE/ATENCAO/PERIGO/CRITICO)",
+    "Grafico de barras | Media de temperatura por estado",
+    "Tabela | Ultimos 50 registros com todos os campos",
 ]:
     story.append(Paragraph(f"• {item}", BULLET))
 
 # ALERTAS TELEGRAM
-section_bar(story, "11. ALERTAS EXTERNOS — TELEGRAM")
+section_bar(story, "11. ALERTAS EXTERNOS | TELEGRAM")
 story.append(Paragraph(
     "O sistema de alertas via Telegram foi implementado com sucesso e funcionou durante "
     "os testes iniciais, enviando notificacoes formatadas ao bot SPACE_STATIONGS_bot "
@@ -407,7 +407,7 @@ story.append(Paragraph(
 story.append(PageBreak())
 
 # INOVACAO
-section_bar(story, "12. INOVACAO — CONTROLE REMOTO DO ESP32")
+section_bar(story, "12. INOVACAO | CONTROLE REMOTO DO ESP32")
 story.append(Paragraph(
     "Como funcionalidade inovadora, implementamos um sistema de CONTROLE REMOTO BIDIRECIONAL "
     "do dispositivo ESP32 a partir do dashboard web, sem necessidade de acesso fisico ao hardware.", BODY))
@@ -418,7 +418,7 @@ for item in [
     "Ao clicar, o dashboard publica um comando no topico MQTT: fiap/iot/lancamento/PLT-01/comando",
     "O ESP32 esta inscrito neste topico e recebe o comando em tempo real via callback MQTT",
     "O dispositivo executa a acao imediatamente: acende/apaga LED, toca buzzer ou reseta estados",
-    "Isso demonstra comunicacao BIDIRECIONAL — nao apenas o dispositivo envia dados, como tambem recebe comandos",
+    "Isso demonstra comunicacao BIDIRECIONAL | nao apenas o dispositivo envia dados, como tambem recebe comandos",
 ]:
     story.append(Paragraph(f"• {item}", BULLET))
 
@@ -516,8 +516,9 @@ story.append(Paragraph(
     "Arthur Batista (RM 565346) | Joao Pedro (RM 561738) | Nelson Felix (RM 565603)",
     s("Normal", fontSize=9, textColor=CINZA_ESC, alignment=TA_CENTER)))
 story.append(Paragraph(
-    "FIAP — Tecnologia em Inteligencia Artificial — 2TIAP — Global Solution 2026.1",
+    "FIAP | Tecnologia em Inteligencia Artificial | 2TIAP | Global Solution 2026.1",
     s("Normal", fontSize=9, textColor=CINZA_ESC, alignment=TA_CENTER)))
 
 doc.build(story)
 print(f"PDF gerado: {OUTPUT}")
+
